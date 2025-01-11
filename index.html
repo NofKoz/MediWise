@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medication Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f7f7f7;
+        }
+
+        h1 {
+            margin: 20px;
+        }
+
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .form-container input, .form-container select, .form-container button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        table th {
+            background-color: #f4f4f4;
+        }
+
+        .completed {
+            background-color: #d4edda;
+        }
+
+        .not-completed {
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <h1>Medication Tracker</h1>
+
+    <div class="form-container">
+        <h3>Add Medication</h3>
+        <form id="medication-form">
+            <input type="text" id="medication-name" placeholder="Medication Name" required />
+            <input type="number" id="dosage" placeholder="Dosage (e.g., 5ml)" required />
+            <select id="intake-method" required>
+                <option value="">Select Intake Method</option>
+                <option value="Syrup">Syrup</option>
+                <option value="Drops">Drops</option>
+                <option value="Pill">Pill</option>
+            </select>
+            <input type="date" id="date" required />
+            <input type="time" id="time" required />
+            <button type="submit">Add</button>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Medication Name</th>
+                <th>Dosage</th>
+                <th>Intake Method</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Completed</th>
+            </tr>
+        </thead>
+        <tbody id="medication-table-body">
+        </tbody>
+    </table>
+
+    <script>
+        const form = document.getElementById('medication-form');
+        const tableBody = document.getElementById('medication-table-body');
+
+        // פונקציה לשמירת הנתונים ב-localStorage
+        function saveToLocalStorage(data) {
+            localStorage.setItem('medicationData', JSON.stringify(data));
+        }
+
+        // פונקציה לטעינת הנתונים מ-localStorage
+        function loadFromLocalStorage() {
+            const data = JSON.parse(localStorage.getItem('medicationData')) || [];
+            data.forEach(addRowToTable);
+        }
+
+        // הוספת שורה לטבלה
+        function addRowToTable({ name, dosage, method, date, time, completed }) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${name}</td>
+                <td>${dosage}</td>
+                <td>${method}</td>
+                <td>${date}</td>
+                <td>${time}</td>
+                <td>
+                    <input type="checkbox" ${completed ? 'checked' : ''} onchange="updateRowStyle(this)" />
+                </td>
+            `;
+            if (completed) row.classList.add('completed');
+            tableBody.appendChild(row);
+        }
+
+        // שמירה אוטומטית כאשר הנתונים משתנים
+        function updateLocalStorage() {
+            const rows = Array.from(tableBody.children);
+            const data = rows.map((row) => {
+                const cells = row.children;
+                return {
+                    name: cells[0].textContent,
+                    dosage: cells[1].textContent,
+                    method: cells[2].textContent,
+                    date: cells[3].textContent,
+                    time: cells[4].textContent,
+                    completed: cells[5].querySelector('input').checked,
+                };
+            });
+            saveToLocalStorage(data);
+        }
+
+        // הוספת אירוע לטופס
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const name = document.getElementById('medication-name').value;
+            const dosage = document.getElementById('dosage').value;
+            const method = document.getElementById('intake-method').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+
+            const newData = { name, dosage, method, date, time, completed: false };
+
+            addRowToTable(newData);
+            updateLocalStorage();
+
+            form.reset();
+        });
+
+        // פונקציה לעדכון הסגנון של השורה
+        function updateRowStyle(checkbox) {
+            const row = checkbox.parentElement.parentElement;
+            if (checkbox.checked) {
+                row.classList.add('completed');
+            } else {
+                row.classList.remove('completed');
+            }
+            updateLocalStorage();
+        }
+
+        // טוען את הנתונים כאשר האתר נטען
+        window.addEventListener('load', loadFromLocalStorage);
+    </script>
+</body>
+</html>
