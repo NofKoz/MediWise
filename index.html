@@ -62,7 +62,7 @@
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js"></script>
 </head>
 <body>
     <h1>Medication Tracker</h1>
@@ -100,46 +100,37 @@
     </table>
 
     <script type="module">
-        // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js";
-        // TODO: Add SDKs for Firebase products that you want to use
-        // https://firebase.google.com/docs/web/setup#available-libraries
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
             apiKey: "AIzaSyCbRMNtPdPTgJMd9ZIEBqOY-QmFaeYSTps",
             authDomain: "mediwise-9c6a1.firebaseapp.com",
             projectId: "mediwise-9c6a1",
-            storageBucket: "mediwise-9c6a1.firebasestorage.app",
+            storageBucket: "mediwise-9c6a1.appspot.com",
             messagingSenderId: "519321715895",
             appId: "1:519321715895:web:b1e2483fd54c8d6f1cb932",
             measurementId: "G-XC6TKPQTSE"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-    </script>
+        const db = getFirestore(app);
 
-    <script>
         const form = document.getElementById('medication-form');
         const tableBody = document.getElementById('medication-table-body');
 
-        // פונקציה לשמירת הנתונים ב-localStorage
-        function saveToLocalStorage(data) {
-            localStorage.setItem('medicationData', JSON.stringify(data));
+        async function saveToFirestore(data) {
+            await addDoc(collection(db, "medications"), data);
         }
 
-        // פונקציה לטעינת הנתונים מ-localStorage
-        function loadFromLocalStorage() {
-            const data = JSON.parse(localStorage.getItem('medicationData')) || [];
-            data.forEach(addRowToTable);
+        async function loadFromFirestore() {
+            const querySnapshot = await getDocs(collection(db, "medications"));
+            querySnapshot.forEach((doc) => {
+                addRowToTable({ ...doc.data(), id: doc.id });
+            });
         }
 
-        // הוספת שורה לטבלה
-        function addRowToTable({ name, dosage, method, date, time, completed }) {
+        function addRowToTable({ id, name, dosage, method, date, time, completed }) {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${name}</td>
@@ -148,32 +139,19 @@
                 <td>${date}</td>
                 <td>${time}</td>
                 <td>
-                    <input type="checkbox" ${completed ? 'checked' : ''} onchange="updateRowStyle(this)" />
+                    <input type="checkbox" ${completed ? 'checked' : ''} onchange="updateCompletionStatus('${id}', this.checked)" />
                 </td>
             `;
             if (completed) row.classList.add('completed');
             tableBody.appendChild(row);
         }
 
-        // שמירה אוטומטית כאשר הנתונים משתנים
-        function updateLocalStorage() {
-            const rows = Array.from(tableBody.children);
-            const data = rows.map((row) => {
-                const cells = row.children;
-                return {
-                    name: cells[0].textContent,
-                    dosage: cells[1].textContent,
-                    method: cells[2].textContent,
-                    date: cells[3].textContent,
-                    time: cells[4].textContent,
-                    completed: cells[5].querySelector('input').checked,
-                };
-            });
-            saveToLocalStorage(data);
+        async function updateCompletionStatus(id, completed) {
+            const medicationRef = doc(db, "medications", id);
+            await updateDoc(medicationRef, { completed });
         }
 
-        // הוספת אירוע לטופס
-        form.addEventListener('submit', (event) => {
+        form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const name = document.getElementById('medication-name').value;
@@ -184,25 +162,13 @@
 
             const newData = { name, dosage, method, date, time, completed: false };
 
+            await saveToFirestore(newData);
             addRowToTable(newData);
-            updateLocalStorage();
 
             form.reset();
         });
 
-        // פונקציה לעדכון הסגנון של השורה
-        function updateRowStyle(checkbox) {
-            const row = checkbox.parentElement.parentElement;
-            if (checkbox.checked) {
-                row.classList.add('completed');
-            } else {
-                row.classList.remove('completed');
-            }
-            updateLocalStorage();
-        }
-
-        // טוען את הנתונים כאשר האתר נטען
-        window.addEventListener('load', loadFromLocalStorage);
+        window.addEventListener('load', loadFromFirestore);
     </script>
 </body>
 </html>
